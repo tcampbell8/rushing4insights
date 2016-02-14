@@ -50,6 +50,7 @@ class Play(object):
 
 if __name__ == '__main__':
     years = range(2002, 2013)
+    year_fails = {year: 0 for year in years}
     for year in years:
         with open(DATA_DIR+DATA[str(year)]) as f:
             lines = f.readlines()
@@ -64,4 +65,26 @@ if __name__ == '__main__':
                 print count, e
                 print p.line
                 continue
-            print p.descripton
+            event_types = ['kicks', 'pass', 'punts', 'sacked', 'extra point', 'field goal',
+                            'left end', 'left tackle', 'left guard', 'right end', 'right tackle',
+                            'right guard', 'up the middle', 'kneels', 'PENALTY', 'FUMBLES', 'scrambles',
+                            'spiked', 'BLOCKED', 'RECOVERED', 'rushed', 'punted', 'TOUCHDOWN', 'Touchback',
+                            'kick', 'kicked', 'SAFETY', 'TWO POINT CONVERSION', 'intercepted'
+                            'TWO POINT CONVERSION ATTEMPT',
+                            'play under review', 'lost', 'no gain', 'was intercepted', 'pushed ob', 'ran ob',
+                            'fumble', 'Touchdown', 'END GAME', 'END QUARTER']
+            ev = None
+            for e in event_types:
+                if e in p.description:
+                    ev = e
+            if p.line[5] in p.description:
+                ev = 'Bad'
+            if p.line[4] in p.description:
+                ev = 'ok'
+            if 'to' in p.description and 'for' in p.description and 'yard' in p.description:
+                ev = 'something'
+
+            if ev is None:
+                year_fails[year] += 1
+                print p.line
+print year_fails
