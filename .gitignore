@@ -1,3 +1,4 @@
 *.pyc
 *~
 plays.csv
+plays.json

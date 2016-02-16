@@ -1,3 +1,5 @@
+import json
+
 DATA_DIR = '/home/matt/workspace/analytics/data/nfl/'
 DATA = {'2002': '2002_nfl_pbp_data.csv',
         '2003': '2003_nfl_pbp_data.csv',
@@ -78,7 +80,7 @@ class Play(object):
                 'yard_line': self.yard_line,
                 'off_score': self.off_score,
                 'def_score': self.def_score,
-                'is_pass': is_pass}
+                'is_pass': self.is_pass}
 
     def as_csv(self):
         ''' returns a csv '''
@@ -114,10 +116,10 @@ if __name__ == '__main__':
     print total
     print not_label
 
-    with open('plays.csv', 'w+') as f:
-        f.write(','.join(['time_to_half', 'time_left_in_game', 'down',
+    with open('plays.json', 'w+') as f:
+        '''f.write(','.join(['time_to_half', 'time_left_in_game', 'down',
                           'dist_to_first', 'quarter', 'score_diff',
                           'yard_line', 'off_score', 'def_score',
-                         'is_pass']))
+                         'is_pass']) + '\n')'''
         for p in plays:
-            f.write(p.as_csv() + '\n')
+            f.write(json.dumps(p.as_dict()) + '\n')
