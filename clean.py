@@ -21,6 +21,10 @@ class PlayError(Exception):
     pass
 
 
+class NotLabelledError(Exception):
+    pass
+
+
 class Play(object):
     def load_from_old_line(self, line):
         cols = ['gameid', 'qtr', 'min', 'sec', 'off', 'def', 'down', 'togo',
@@ -43,14 +47,54 @@ class Play(object):
         except ValueError:
             secs = 0
         self.time_left_in_game = 60 * int(vals[2]) + secs
-        self.time_left_in_half = self.time_left_in_game % (30*60)
+        self.time_to_half = self.time_left_in_game % (30*60)
         if self.time_left_in_game == 60 * 60 or self.time_left_in_game == 60 * 30:
-            self.time_left_in_half = 30 * 60
+            self.time_to_half = 30 * 60
+
+    def label(self):
+        self.type = None
+        rushing_types = ['left end', 'left tackle', 'left guard', 'right end', 'right tackle',
+                         'right guard', 'up the middle', 'rushed']
+        for t in rushing_types:
+            if t in self.description:
+                self.type = 'RUSH'
+                self.is_pass = 0
+
+        if 'pass' in self.description:
+            self.type = 'PASS'
+            self.is_pass = 1
+
+        if self.type is None:
+            raise NotLabelledError()
+
+    def as_dict(self):
+        ''' returns a dictionary of the attributes '''
+        return {'time_to_half': self.time_to_half,
+                'time_left_in_game': self.time_left_in_game,
+                'down': self.down,
+                'dist_to_first': self.dist_to_first,
+                'quarter': self.quarter,
+                'score_diff': self.score_diff,
+                'yard_line': self.yard_line,
+                'off_score': self.off_score,
+                'def_score': self.def_score,
+                'is_pass': is_pass}
+
+    def as_csv(self):
+        ''' returns a csv '''
+        attrs = ['time_to_half', 'time_left_in_game', 'down',
+                  'dist_to_first', 'quarter', 'score_diff',
+                  'yard_line', 'off_score', 'def_score',
+                 'is_pass']
+        return ','.join([str(getattr(self, a)) for a in attrs])
+
 
 
 if __name__ == '__main__':
     years = range(2002, 2013)
-    year_fails = {year: 0 for year in years}
+    total = 0
+    not_label = 0
+    plays = []
     for year in years:
         with open(DATA_DIR+DATA[str(year)]) as f:
             lines = f.readlines()
@@ -59,32 +103,21 @@ if __name__ == '__main__':
             p = Play()
             try:
                 p.load_from_old_line(line)
+                p.label()
             except PlayError:
                 continue
-            except Exception as e:
-                print count, e
-                print p.line
+            except NotLabelledError:
+                not_label += 1
                 continue
-            event_types = ['kicks', 'pass', 'punts', 'sacked', 'extra point', 'field goal',
-                            'left end', 'left tackle', 'left guard', 'right end', 'right tackle',
-                            'right guard', 'up the middle', 'kneels', 'PENALTY', 'FUMBLES', 'scrambles',
-                            'spiked', 'BLOCKED', 'RECOVERED', 'rushed', 'punted', 'TOUCHDOWN', 'Touchback',
-                            'kick', 'kicked', 'SAFETY', 'TWO POINT CONVERSION', 'intercepted'
-                            'TWO POINT CONVERSION ATTEMPT',
-                            'play under review', 'lost', 'no gain', 'was intercepted', 'pushed ob', 'ran ob',
-                            'fumble', 'Touchdown', 'END GAME', 'END QUARTER']
-            ev = None
-            for e in event_types:
-                if e in p.description:
-                    ev = e
-            if p.line[5] in p.description:
-                ev = 'Bad'
-            if p.line[4] in p.description:
-                ev = 'ok'
-            if 'to' in p.description and 'for' in p.description and 'yard' in p.description:
-                ev = 'something'
+            total += 1
+            plays.append(p)
+    print total
+    print not_label
 
-            if ev is None:
-                year_fails[year] += 1
-                print p.line
-print year_fails
+    with open('plays.csv', 'w+') as f:
+        f.write(','.join(['time_to_half', 'time_left_in_game', 'down',
+                          'dist_to_first', 'quarter', 'score_diff',
+                          'yard_line', 'off_score', 'def_score',
+                         'is_pass']))
+        for p in plays:
+            f.write(p.as_csv() + '\n')
