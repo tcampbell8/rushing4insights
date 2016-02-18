@@ -4,10 +4,11 @@ __author__ = 'tatePro'
 from pyspark.mllib.feature import HashingTF, IDF
 from pyspark.mllib.regression import LabeledPoint
 from pyspark.mllib.classification import NaiveBayes 
-from pyspark.mllib.classification import SVMWithSGD, SVMModel, LogisticRegressionWithLBFGS, LogisticRegressionModel
+from pyspark.mllib.classification import SVMWithSGD, SVMModel
 from pyspark.mllib.regression import LabeledPoint
 import numpy as np
 from collections import Counter
+import matplotlib.pyplot as plt
 
 def dictionarize(line, columns):
 	'''
@@ -108,22 +109,46 @@ new_data = data_converted_rush_labs.filter(lambda line: line['description'] in [
 
 nfl_data = new_data.map(lambda line: encode_pass_rush(line))
 
+teamplays = nfl_data.map(lambda line: (line['off'], line['description']))
+teamplays_red = teamplays.reduceByKey(lambda a,b: str(a) + ',' + str(b))
+teamsplits = teamplays_red.map(lambda line: (line[0], Counter(line[1].split(','))))
+splitdist = teamsplits.collect()
+passrate = list()
+#team_keys = [l[0] for l in splitdist]
+for l in splitdist:
+	passrate.append((l[0], float(l[1]['1.0'])/int(l[1]['1.0'] + l[1]['0'])))
+
+passrate = sorted(passrate, key = lambda tup: tup[1])
+passrate.pop()
+
+teams = [k[0] for k in passrate]
+rates = [100*k[1] for k in passrate]
+
+plot_domain = [2*x for x in range(32)]
+fig, ax = plt.subplots() 
+plot = ax.bar(plot_domain, rates, width = 1.3, color='r') 
+plt.xticks(rotation=90)
+ax.set_xticks([n+0.6 for n in plot_domain])
+ax.set_xticklabels(teams)
+ax.set_ylim([45,65])
+ax.set_xlim([-1,65])
+ax.set_ylabel('Pass rate (%)')
+ax.set_title('Empirical Passing Rates for NFL Teams \n (over 2002 - 2015 regular seasons)')
+plt.savefig('pass_rate_by_team_final.jpeg')
+plt.show()
+
+
+
+
+
 VARS = ['description', 'qtr', 'min', 'down', 'togo', 'ydline', 'defscore', 'offscore']
 
 data1 = nfl_data.map(lambda line: prep_svm_data(line, VARS))
 
 svm_model = SVMWithSGD.train(data1, iterations=2000)
-logreg_model = LogisticRegressionWithLBFGS.train(data1)
+#logreg_model = LogisticRegressionWithLBFGS.train(data1)
 
-# Evaluating the svm model on training data
+# Evaluating the model on training data
 labelsAndPreds = data1.map(lambda p: (p.label, svm_model.predict(p.features)))
-trainErr = float(labelsAndPreds.filter(lambda (v, p): v != p).count()) / float(data1.count())
+trainErr = labelsAndPreds.filter(lambda (v, p): v != p).count() / float(data1.count())
 print("SVM Training Error = " + str(trainErr))
-
-# Evaluate the logistic regression on training data 
-labelsAndPreds_log = data1.map(lambda p: (p.label, logreg_model.predict(p.features)))
-trainErr_log = float(labelsAndPreds_log.filter(lambda (v, p): v != p).count()) / float(data1.count())
-print("Logistic Regression Training Error = " + str(trainErr_log))
-print("SVM Training Error = " + str(trainErr))
-
-logreg_model.weights, logreg_model.intercept
