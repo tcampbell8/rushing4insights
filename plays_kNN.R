@@ -15,4 +15,4 @@ CrossTable(x = data.testLabels, y = data_pred, prop.chisq=FALSE)
 
 accuracy = sum(data_pred == data.testLabels)/length(data_pred)
 
-# Overall Accuracy: 57.7%
+# Overall Accuracy: 58.6%
