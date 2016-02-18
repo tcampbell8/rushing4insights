@@ -146,9 +146,18 @@ VARS = ['description', 'qtr', 'min', 'down', 'togo', 'ydline', 'defscore', 'offs
 data1 = nfl_data.map(lambda line: prep_svm_data(line, VARS))
 
 svm_model = SVMWithSGD.train(data1, iterations=2000)
-#logreg_model = LogisticRegressionWithLBFGS.train(data1)
+logreg_model = LogisticRegressionWithLBFGS.train(data1)
 
-# Evaluating the model on training data
+# Evaluating the svm model on training data
 labelsAndPreds = data1.map(lambda p: (p.label, svm_model.predict(p.features)))
-trainErr = labelsAndPreds.filter(lambda (v, p): v != p).count() / float(data1.count())
+trainErr = float(labelsAndPreds.filter(lambda (v, p): v != p).count()) / float(data1.count())
 print("SVM Training Error = " + str(trainErr))
+
+# Evaluate the logistic regression on training data 
+labelsAndPreds_log = data1.map(lambda p: (p.label, logreg_model.predict(p.features)))
+trainErr_log = float(labelsAndPreds_log.filter(lambda (v, p): v != p).count()) / float(data1.count())
+print("Logistic Regression Training Error = " + str(trainErr_log))
+print("SVM Training Error = " + str(trainErr))
+
+svm_model.weights, svm_model.intercept
+logreg_model.weights, logreg_model.intercept
